@@ -10,7 +10,7 @@
 ///  at the end of main()
 ///
 
-#include "RKn.hpp"
+#include "RungeKutta.hpp"
 #include "TROOT.h"
 #include "TApplication.h"
 #include "TLegend.h"

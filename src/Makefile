@@ -8,33 +8,21 @@ ROOTLIBS   = $(shell root-config --libs)
 ROOTGLIBS  = $(shell root-config --glibs)
 ROOTFLAGS   = $(ROOTCFLAGS) $(ROOTLIBS) $(ROOTGLIBS) 
 CXXFLAGS  += $(ROOTCFLAGS) -I$(ODELIB) -Wall -O3
-LDFLAGS    = $(ROOTLIBS) $(ROOTGLIBS) -Wl,-rpath,$(ODELIB) -L$(ODELIB) -lode
+LDFLAGS    = $(ROOTLIBS) $(ROOTGLIBS) # ,-rpath #,$(ODELIB) -L$(ODELIB) -lode
 GSLFLAGS   = -lgsl -lgslcblas
 GXX	   = g++ $(CXXFLAGS)
 
 
-EXES=baseball1 baseball2 RKnDemo RKnStep RKnTest projGSL
+EXES=baseball1 vterm
 
 
 all: $(EXES)
 
-RKnDemo: RKnDemo.cpp $(ODELIB)/RKn.hpp 
-	$(GXX) $(CXXFLAGS) -o$@ $@.cpp $(LDFLAGS)
+vterm: vterm.cpp RungeKutta.hpp
+	$(GXX) $(CXXFLAGS) RungeKutta.hpp $@.cpp -o$@ $(LDFLAGS) 
 
-RKnStep: RKnStep.cpp $(ODELIB)/RKn.hpp 
-	$(GXX) $(CXXFLAGS) -o$@ $@.cpp $(LDFLAGS)
-
-RKnTest: RKnTest.cpp $(ODELIB)/RKn.hpp 
-	$(GXX) $(CXXFLAGS) -o$@ $@.cpp $(LDFLAGS)
-
-baseball1: baseball1.cpp $(ODELIB)/RKn.hpp 
-	$(GXX) $(CXXFLAGS) -o$@ $@.cpp $(LDFLAGS) 
-
-baseball2: baseball2.cpp $(ODELIB)/RKn.hpp 
-	$(GXX) $(CXXFLAGS) -o$@ $@.cpp $(LDFLAGS)
-
-projGSL: projGSL.cpp
-	$(GXX) $(CXXFLAGS) -o$@ $@.cpp $(LDFLAGS) $(GSLFLAGS)
+baseball1: baseball1.cpp RungeKutta.hpp
+	$(GXX) $(CXXFLAGS) RungeKutta.hpp $@.cpp -o$@ $(LDFLAGS) 
 
 
 clean:
