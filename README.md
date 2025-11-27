@@ -1,52 +1,35 @@
-# ode3
+# ODE-3 
 
-physx630 odelib
----
+## Compiling 
+Everything should compile the same way as in the original fork, using ```make``` at the top-level dir of the repo. All executables (```vterm```, ```baseball1```, ```baseball2```) are in the ```src``` directory. 
 
-To build the ODE library and example programs, simply type `make` in this top level ode3 directory.
+## custom version of ode-lib
 
-Description of example programs:<br>
+I wrote my own 4th-order Runge-Kutta solver, you can see its imlpementation in ```src/RungeKutta.hpp```. I did this for a few reasons:  
+- I wanted to understand the R-K method better
+- I wanted practice using C++ templates, which my solver uses.
+- Specifically, the Solver method ```RungeKutta4N``` has a template-argument which is an unsigned integer (as you can see written my my source-code files as ```RungeKutta4N<6>```). This number 6 specifies the number of dependent variables in our system of coupled ODEs. The reason I bothered using a template for this, rather than just using a ```std::vector``` (where I would not have to specify the DOF of my ODE system beforehand), is that when you use templates like this, you _must_ specify the DoF of your ODE system at compile-time. in other words, If I used vectors, I could write a lot of code which would compile just fine, but would break in weird and unpredictable ways if I mismatch the number of independent vars in different places. If you specify exactly how many DOF you have with a template, the code will refuse to compile if you accidentally use the wrong DOF somehwere in your code.
 
-**RKnTest**: Solves a single 1st order ODE using the single equation RK4 solver and the ODE array solver
+## RungeKutta solver 
+The way the RungeKutta solver works is this: 
+#### PhasePoint_t 
+This is a small struct which contains a double for the independent-var (t), and an array of points, each of which is the value of different independent variables in phase-space. the template is the number of dependent vars a system has. for example, for a baseball with three positions and three velocities, the phase-space has 6 dependent vars (x,y,z + vx,vy,vz), and thus a phase-space point for this problem could be: 
+```
+PhasePoint_t<6> point;
+```
+#### FirstDerivativeSystem
+This is just a re-name of a ```std::function<>``` template, which takes in a single PhasePoint_t sturct (a single point in phase-space), and computes the first derivate of each dependent variable at the given phase-space point. See the executables in the ```src``` directory for concrete examples of ```FirstDerivativeSystem``` objects. 
 
-**RKnStep**: A basic example of the ODE array solver is applied to projectile motion with a simple model of air resistance, force of air resistance = -kv^2<br>. At each step in the elapsed time and x,y positions are printed.<br>
-Optional parameters [default values]<br>
-* -v initial_velocity [100] m/s
-* -t angle_thera [45] degrees
-* -m mass_of_projectile [10] kg
-* -k coefficient_of_air_resistance [0.1] kg/m
+#### StoppingCondition
+This is another rename of a ```std::function<>``` template, which takes a PhaePoint_t point, but it returns a bool - if this function returns 'true' then iterations are terminated at this phase-point, and if it returns 'false', then iterations continue. See the executables in the ```src``` directory for concrete examples of ```StoppingCondition``` objects. 
 
+#### RungeKutta4N 
+This is what actually applies the 4th-order Runge-Kutta integration method. The arguments are: 
++ ```FirstDerivativeSystem``` 'first_derivs': this is the systems of coupled first-derivatives; one for each dependent variable.
++ ```PhasePoint_t``` 'starting_point': this is the starting point in phase space, from which each dependent variable will be evolved forward in time
++ ```double h```: the fixed-size time-step
++ ```max_iterations``` the max number of time-steps to be integrated.
++ ```StoppingCondition*``` 'stop_iterations' A ptr to a ```StoppingCondition``` fcn object. If a ```nullptr``` is provided for this argument, then no stopping condition is evaluated; iterations will continue until ```max_iterations``` is reached. If it isn't null, then this function is evaluated at each integration step; if it ever returns ```true```, then iterations are ceased.
 
-**RKnDemo**: Solves for projectile motion with a simple model of air resistance, force of air resistance = -kv^2<br>
-This program includes graphical output.  Detailed output is saved in TGraph objects in RKnDemo.root.  The file **RKnPlotDemo.py** shows how to access date in the TGraphs and can be used to generate additional plots.<br>
-Optional parameters [default values]<br>
-* -v initial_velocity [100] m/s
-* -t angle_thera [45] degrees
-* -m mass_of_projectile [10] kg
-* -k coefficient_of_air_resistance [0.1] kg/m
+This funciton returns a vector of ```PhasePoint_t``` objects, which are the results of integrating from the starting point supplied; they are spaced in time by ```h```, and include the initial phase-point supplied. 
 
-**baseball1**:  Starter template for first baseball problem
-
-**baseball2**:  Starter template for second baseball problem
-
-**baseball_drag.ipynb**: this notebook describes the drag force equations used in the text.
-
-gsl starter code
----
-
-The starter code here (projGSL.cpp) demonstrates very basic usage of the gsl for solving a problem of coupled differential equations. An 8th order R-K solver with fixed step size is used. You are encouraged to try other solvers as you explore the problem. See here for the gsl docs: https://www.gnu.org/software/gsl/doc/html/ode-initval.html
-
-This example solves the 2D projectile motion problem with a simple model for air resistance. After each step, data are stored in ROOT TGraphs, which are then displayed at the conclusion of the calculation.
-
-The gsl provides a number of ODE solvers and a variety of interfaces.  Some of the solvers (not R-K methods) use the Jacobian matrix, which gives the devivative of the function wrt the dependent parameters.  See the gsl examples for details.
-
-Python starter code
----
-
-Two examples are given for using ODE solvers from the scipy.integrate sub-package in Python. In these examples graphs are made using matplotlib.
-
-    Solution (projScPY2.py[ipynb]) using a more modern interface scipy.integrate.solve_ivp. See also: https://docs.scipy.org/doc/scipy/reference/tutorial/integrate.html and https://www.programcreek.com/python/example/119375/scipy.integrate.solve_ivp
-
-    Solution (projScPY.py[ipynb]) using an older interface scipy.integrate.odeint¶ (see comments here: https://docs.scipy.org/doc/scipy/reference/integrate.html).  I do not recommend using this interface any longer.
-
-The notebook versions contain additional comments on using the integrators.
