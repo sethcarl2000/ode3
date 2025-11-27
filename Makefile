@@ -2,10 +2,10 @@
 # this "simply" runs the make in the two subdirectories: odelib and src
 
 
-ODELIB =  $(PWD)/odelib
+ODELIB =  $(PWD)/SolverLib
 export ODELIB
 
-SUBDIRS = odelib src
+SUBDIRS = src 
 
 .PHONY: subdirs $(SUBDIRS)
 

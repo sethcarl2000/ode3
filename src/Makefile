@@ -13,7 +13,7 @@ GSLFLAGS   = -lgsl -lgslcblas
 GXX	   = g++ $(CXXFLAGS)
 
 
-EXES=baseball1 vterm
+EXES=baseball1 vterm baseball2
 
 
 all: $(EXES)
@@ -22,6 +22,9 @@ vterm: vterm.cpp RungeKutta.hpp
 	$(GXX) $(CXXFLAGS) RungeKutta.hpp $@.cpp -o$@ $(LDFLAGS) 
 
 baseball1: baseball1.cpp RungeKutta.hpp
+	$(GXX) $(CXXFLAGS) RungeKutta.hpp $@.cpp -o$@ $(LDFLAGS) 
+
+baseball2: baseball2.cpp RungeKutta.hpp
 	$(GXX) $(CXXFLAGS) RungeKutta.hpp $@.cpp -o$@ $(LDFLAGS) 
 
 
