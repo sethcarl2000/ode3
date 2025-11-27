@@ -15,15 +15,20 @@
 #include "TGClient.h"
 #include "TF1.h"
 #include "TCanvas.h"
+#include "TAxis.h"
 #include <iostream>
 #include <cstdio>
 #include <cstdlib>
 #include <vector>
 #include <functional> 
 #include <cmath> 
+#include <string> 
 
 using namespace std;
 
+namespace {
+  constexpr double m_to_ft = 3.28084;  
+}
 
 int main(int argc, char **argv){
 
@@ -48,7 +53,7 @@ int main(int argc, char **argv){
       ip = atoi(optarg);
       break;
     case 'n':
-      showPlot=false;
+      showPlot=true;
       break;
     }
 
@@ -57,23 +62,39 @@ int main(int argc, char **argv){
   double phi = 0.; // rad
 
   constexpr double pi = 3.14159265359; 
-  TString title;
-  if (ip==0){
-    cout << "Setting up initial conditions for slider" << endl;
-    phi = 0; 
+  
+  string pitch_type; 
+  switch (ip) {
+    case 0 : {
+      cout << "Setting up initial conditions for slider" << endl;
+      phi = 0; 
+      pitch_type="Slider"; 
+      break; 
+    }
+    case 1 : {  
+      cout << "Setting up initial conditions for curveball" << endl;
+      phi = pi / 4.;
+      pitch_type="Curveball"; 
+      break;  
+    }
+    case 2 : {
+      cout << "Setting up initial conditions for screwball" << endl;
+      phi = 0.75 * pi; 
+      pitch_type="Screwball"; 
+      break; 
+    }
+    case 3 : {
+      cout << "Setting up initial conditions for fastball" << endl;
+      phi = -0.55 * pi; 
+      pitch_type="Fastball"; 
+      break; 
+    }
+    default : { 
+      cout << "invalid option. ip must be 0-3."; 
+      return -1; 
+    }
   }
-  else if (ip==1){
-    cout << "Setting up initial conditions for curveball" << endl;
-    phi = pi / 4.; 
-  }
-  else if (ip==2){
-    cout << "Setting up initial conditions for screwball" << endl;
-    phi = -pi / 4.; 
-  }
-  else {
-    cout << "Setting up initial conditions for fastball" << endl;
-    phi = 0.45 * pi; 
-  }
+  
 
   TApplication theApp("App", &argc, argv); // init ROOT App for displays
 
@@ -115,40 +136,40 @@ int main(int argc, char **argv){
         pt.X[3],    // dx/dt = vx
         pt.X[4],    // dy/dt = vy
         pt.X[5],    // dz/dt = vz
-        -pt.X[3]*( b  +  c*v )/m  -  B*omega*( pt.X[5]*sin(phi) - pt.X[4]*cos(phi) ),            
-        -pt.X[4]*( b  +  c*v )/m  -  B*omega*pt.X[3]*cos(phi),           
-        -pt.X[5]*( b  +  c*v )/m  -  B*omega*pt.X[4]*sin(phi)   - g   
+        -pt.X[3]*( b  +  c*v )/m  +  B*omega*( pt.X[5]*sin(phi) - pt.X[4]*cos(phi) ),            
+        -pt.X[4]*( b  +  c*v )/m  +  B*omega*pt.X[3]*cos(phi),           
+        -pt.X[5]*( b  +  c*v )/m  -  B*omega*pt.X[3]*sin(phi)   - g   
     };
   };
 
-  const double z_strike = 0.9; //minimum height of ball once it reaches home-plate, in meters
 
-  const double ymax{10.}, zmax{10.}; 
+  const double ymax{10.};
+  const double zmax{10.}; 
   //our stopping condition; we want to return if our baseball is out-of-bounds
   StoppingCondition<6> end_pitch_test = [xend,ymax,zmax](const XVpt& pt) 
   {
     //return 'true' if the stopping condition is met (so we should stop iterations), and 'false' if iterations should continue. 
-    if (pt.X[0] > xend*0.3048 ||
+    if (pt.X[0] > xend/m_to_ft ||
         fabs(pt.X[1]) > ymax  ||
         fabs(pt.X[2]) > zmax) return true; 
     return false;  
   };
 
   //initial conditions (in m/s)
-  XVpt starting_point{ 0., {0.,0.,0., 0.,1.,40.}}; 
+  XVpt starting_point{ 0., {0.,0.,0., 40.,0.,1.}}; 
 
-  auto points = RungeKutta4N<6>(sys_drag_and_magnus, starting_point, 0.05, 1000, &end_pitch_test); 
+  auto points = RungeKutta4N<6>(sys_drag_and_magnus, starting_point, 0.01, 1000, &end_pitch_test); 
 
   auto gs = MakeTGraphsFromPts<6>(points); 
 
   XVpt last_point = points.back(); 
-  xend = last_point.X[0]; 
-  yend = last_point.X[1]; 
-  zend = last_point.X[2]; 
+  xend = last_point.X[0] * m_to_ft; 
+  yend = last_point.X[1] * m_to_ft; 
+  zend = last_point.X[2] * m_to_ft; 
 
-  vxend = last_point.X[3]; 
-  vyend = last_point.X[4]; 
-  vzend = last_point.X[5]; 
+  vxend = last_point.X[3] * m_to_ft; 
+  vyend = last_point.X[4] * m_to_ft; 
+  vzend = last_point.X[5] * m_to_ft; 
 
   // to compare to the plots in Fitzpatrick, output your results in **feet**
   // do not change these lines
@@ -160,8 +181,31 @@ int main(int argc, char **argv){
 
   // plot the trajectory.  See Fitzpatrick for plot details
   if (showPlot){
-    cout << "Press ^c to exit" << endl;
-    theApp.SetIdleTimer(30,".q");  // set up a failsafe timer to end the program  
+
+    //let's extract the data in the form of a graph..
+    vector<double> pts_x, pts_y, pts_z; 
+    
+    for (auto &pt : points) {
+      pts_x.push_back( pt.X[0]*m_to_ft ); 
+      pts_y.push_back( pt.X[1]*m_to_ft ); 
+      pts_z.push_back( pt.X[2]*m_to_ft ); 
+    }
+
+    auto g_xy = new TGraph( pts_x.size(), pts_x.data(), pts_y.data() ); 
+    auto g_xz = new TGraph( pts_x.size(), pts_x.data(), pts_z.data() ); 
+    
+    
+    auto c = new TCanvas;
+
+    g_xz->SetTitle(Form("Pitch: %s;x (ft); y/z (ft)",pitch_type.c_str())); 
+    g_xz->GetYaxis()->SetRangeUser(-4., +2.);
+    g_xz->Draw(); 
+    g_xy->SetLineStyle(kDashed); 
+    g_xy->Draw("SAME"); 
+
+
+
+    //theApp.SetIdleTimer(30,".q");  // set up a failsafe timer to end the program  
     theApp.Run();
   }
   
